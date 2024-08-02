@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "510841256632",
+    "project_id": "zenbyte-423ac",
+    "storage_bucket": "zenbyte-423ac.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:510841256632:android:ba429823a83d197ea1d24d",
+        "android_client_info": {
+          "package_name": "com.example.zenbyte"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDlViGPb0NsEri9ipDjXSEkgRT5aU46Jig"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
