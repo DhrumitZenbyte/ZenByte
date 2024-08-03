@@ -1,35 +1,23 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'role_selection_screen.dart'; // Import the RoleSelectionScreen
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FreelancerDashboard extends StatelessWidget {
-  final String freelancerId;
+  final String freelancerEmail;
 
-  FreelancerDashboard({required this.freelancerId});
+  FreelancerDashboard({required this.freelancerEmail});
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Fetch projects assigned to the freelancer by looking up their assigned projects
   Stream<List<Map<String, dynamic>>> _getAssignedProjects() {
     return _firestore
         .collection('freelancers')
-        .doc(freelancerId)
+        .where('email', isEqualTo: freelancerEmail)
         .snapshots()
-        .asyncMap((docSnapshot) async {
-      if (!docSnapshot.exists) {
-        print('Freelancer document does not exist.');
-        return [];
-      }
-
-      List<String> assignedProjectIds = List<String>.from(docSnapshot.data()?['assignedProjects'] ?? []);
-      print('Assigned Project IDs: $assignedProjectIds');
-
-      if (assignedProjectIds.isEmpty) {
-        return [];
+        .asyncMap((snapshot) async {
+      List<String> assignedProjectIds = [];
+      if (snapshot.docs.isNotEmpty) {
+        assignedProjectIds = List<String>.from(snapshot.docs.first.data()['assignedProjects'] ?? []);
       }
 
       List<Map<String, dynamic>> projects = [];
@@ -37,26 +25,10 @@ class FreelancerDashboard extends StatelessWidget {
         final projectSnapshot = await _firestore.collection('projects').doc(projectId).get();
         if (projectSnapshot.exists) {
           projects.add(projectSnapshot.data() as Map<String, dynamic>);
-        } else {
-          print('Project document with ID $projectId does not exist.');
         }
       }
-
-      print('Fetched Projects: $projects');
       return projects;
     });
-  }
-
-  // Method to handle user logout
-  Future<void> _logout() async {
-    try {
-      await _auth.signOut();
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('userRole'); // Remove user role from SharedPreferences
-      Get.offAll(() => RoleSelectionScreen()); // Navigate to RoleSelectionScreen after logout
-    } catch (e) {
-      Get.snackbar('Logout Error', 'An error occurred while logging out. Please try again.');
-    }
   }
 
   @override
@@ -64,12 +36,6 @@ class FreelancerDashboard extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('Freelancer Dashboard'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.logout),
-            onPressed: _logout,
-          ),
-        ],
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: _getAssignedProjects(),

@@ -3,12 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:zenbyte/Screens/admin_login.dart';
-import 'package:zenbyte/Screens/freelancer_dashboard.dart';
-import 'package:zenbyte/Screens/freelancer_login.dart';
-import 'package:zenbyte/Screens/role_selection_screen.dart';
+import 'package:zenbyte/screens/admin_login.dart';
+import 'package:zenbyte/screens/freelancer_dashboard.dart';
+import 'package:zenbyte/screens/freelancer_login.dart';
+import 'package:zenbyte/screens/role_selection_screen.dart';
 import 'package:zenbyte/screens/admin_main_screen.dart';
-
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +32,11 @@ class MyApp extends StatelessWidget {
     return prefs.getString('userRole');
   }
 
+  Future<String?> _getStoredEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('userEmail');
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<String?>(
@@ -45,12 +49,26 @@ class MyApp extends StatelessWidget {
         }
 
         String? userRole = snapshot.data;
-
         Widget homeScreen;
+
         if (userRole == 'admin') {
           homeScreen = AdminHomeScreen();
         } else if (userRole == 'freelancer') {
-          homeScreen = FreelancerDashboard(freelancerId: 'yourFreelancerId'); // Replace with actual ID
+          // Fetch the stored email
+          homeScreen = FutureBuilder<String?>(
+            future: _getStoredEmail(),
+            builder: (context, emailSnapshot) {
+              if (emailSnapshot.connectionState == ConnectionState.waiting) {
+                return Center(child: CircularProgressIndicator());
+              }
+
+              if (emailSnapshot.hasData && emailSnapshot.data != null) {
+                return FreelancerDashboard(freelancerEmail: emailSnapshot.data!);
+              } else {
+                return RoleSelectionScreen(); // Fallback if email is not available
+              }
+            },
+          );
         } else {
           homeScreen = RoleSelectionScreen();
         }

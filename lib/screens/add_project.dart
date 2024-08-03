@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
-import '../services/firestore_service.dart';
 
 class AddProjectScreen extends StatefulWidget {
   @override
@@ -16,14 +15,19 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
   List<TextEditingController> _phaseControllers = [];
   final TextEditingController _fullPaymentController = TextEditingController();
   final TextEditingController _completedPaymentController = TextEditingController();
-  String? _selectedFreelancerId;
+  final TextEditingController _remainingPaymentController = TextEditingController();
+  String? _selectedFreelancerEmail;
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirestoreService _firestoreService = FirestoreService(); // Initialize your service
 
   Future<List<Map<String, dynamic>>> _fetchFreelancers() async {
     final snapshot = await _firestore.collection('freelancers').get();
-    return snapshot.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList();
+    return snapshot.docs
+        .map((doc) => {
+      'email': doc.data()['email'] ?? '',
+      ...doc.data(),
+    })
+        .toList();
   }
 
   void _addProject() async {
@@ -35,10 +39,17 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
     final fullPayment = double.tryParse(_fullPaymentController.text) ?? 0.0;
     final completedPayment = double.tryParse(_completedPaymentController.text) ?? 0.0;
     final remainingPayment = fullPayment - completedPayment;
-    final freelancerId = _selectedFreelancerId;
+    final freelancerEmail = _selectedFreelancerEmail;
 
     if (name.isNotEmpty && startDate != null && endDate != null) {
-      // Add project to Firestore
+      // Add project to Firestore with email-based document ID
+      final freelancers = await _firestore.collection('freelancers').where('email', isEqualTo: freelancerEmail).get();
+      if (freelancers.docs.isEmpty) {
+        Get.snackbar('Error', 'Freelancer not found');
+        return;
+      }
+      final freelancerId = freelancers.docs.first.id;
+
       final projectRef = await _firestore.collection('projects').add({
         'name': name,
         'startDate': startDate.toIso8601String(),
@@ -53,11 +64,9 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
       });
 
       // If assigned to a freelancer, update freelancer's assignedProjects
-      if (freelancerId != null) {
-        await _firestore.collection('freelancers').doc(freelancerId).update({
-          'assignedProjects': FieldValue.arrayUnion([projectRef.id]),
-        });
-      }
+      await _firestore.collection('freelancers').doc(freelancerId).update({
+        'assignedProjects': FieldValue.arrayUnion([projectRef.id]),
+      });
 
       Get.snackbar('Success', 'Project added successfully');
       _clearFields();
@@ -74,7 +83,8 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
     _phaseControllers.clear();
     _fullPaymentController.clear();
     _completedPaymentController.clear();
-    _selectedFreelancerId = null;
+    _remainingPaymentController.clear();
+    _selectedFreelancerEmail = null;
     setState(() {});
   }
 
@@ -85,11 +95,10 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
     );
-    if (picked != null && picked != _startDate) {
+    if (picked != null && picked != _startDate)
       setState(() {
         _startDate = picked;
       });
-    }
   }
 
   void _selectEndDate(BuildContext context) async {
@@ -99,11 +108,10 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
     );
-    if (picked != null && picked != _endDate) {
+    if (picked != null && picked != _endDate)
       setState(() {
         _endDate = picked;
       });
-    }
   }
 
   Widget _buildPhaseField(int index) {
@@ -122,7 +130,7 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
               _phaseControllers.removeAt(index);
             });
           },
-        ),
+        )
       ],
     );
   }
@@ -213,19 +221,18 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
 
                 final freelancers = snapshot.data!;
                 return DropdownButtonFormField<String>(
-                  value: _selectedFreelancerId,
+                  value: _selectedFreelancerEmail,
                   hint: Text('Select Freelancer'),
                   items: freelancers.map((freelancer) {
-                    final id = freelancer['id'] as String? ?? '';
                     final email = freelancer['email'] as String? ?? 'Unknown';
                     return DropdownMenuItem<String>(
-                      value: id,
+                      value: email,
                       child: Text(email),
                     );
                   }).toList(),
                   onChanged: (value) {
                     setState(() {
-                      _selectedFreelancerId = value;
+                      _selectedFreelancerEmail = value;
                     });
                   },
                 );

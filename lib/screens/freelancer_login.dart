@@ -12,12 +12,15 @@ class FreelancerLoginScreen extends StatelessWidget {
     await prefs.setString('userRole', 'freelancer');
   }
 
-  void _login() {
-    // Simulate login and fetch freelancer ID
-    final freelancerId = 'yourFreelancerId'; // Replace with actual ID
+  void _login() async {
+    // Simulate login and fetch freelancer email
+    final freelancerEmail = emailController.text; // Use email instead of ID
 
-    _setUserRole();
-    Get.offAll(() => FreelancerDashboard(freelancerId: freelancerId));
+    // Set user role in shared preferences
+    await _setUserRole();
+
+    // Navigate to FreelancerDashboard with the email
+    Get.offAll(() => FreelancerDashboard(freelancerEmail: freelancerEmail));
   }
 
   @override
@@ -33,6 +36,7 @@ class FreelancerLoginScreen extends StatelessWidget {
             TextField(
               controller: emailController,
               decoration: InputDecoration(labelText: 'Email'),
+              keyboardType: TextInputType.emailAddress,
             ),
             TextField(
               controller: passwordController,
